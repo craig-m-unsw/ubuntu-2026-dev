@@ -71,6 +71,10 @@ sync
 
 The Base64 encoded payload is our Ansible `playbook.yml` file.
 
+```shell
+cd provision
+```
+
 ##### Linux/macOS
 
 Generate `playbook.b64`:
