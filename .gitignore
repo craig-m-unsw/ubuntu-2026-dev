@@ -1,0 +1,15 @@
+#
+# git ignore files
+#
+**.pyc
+**.iso
+**.log
+**.zip
+**.tar.gz
+**.b64
+#
+# folders:
+#
+temp/
+.agents/
+.codex/

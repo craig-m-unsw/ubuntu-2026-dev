@@ -1,2 +1,169 @@
-# ubuntu-2026-dev
-Ubuntu development desktop - 2026 e-waste edition
+# Linux Junk Desktop 2026 Edition
+
+Ubuntu 26.04 LTS was released on April 23, 2026, and it will be supported until April 2031.
+
+It makes a great development platform.
+
+## Overview
+
+* x1 Laptop from E-waste 
+* x1 USB Key for Ubuntu
+* x1 USB key for configuration data
+
+An older Intel Core i5 system with at least 8 GB of RAM and 20 GB or more of available disk space is sufficient.
+
+> A **junk computer** is hardware sourced from e-waste, recycling, or surplus and used only for engineering, AI agent, learning, and development work. It is isolated from personal and production environments, holds no sensitive data, is never used for personal accounts, and may be reformatted, encrypted, reimaged, infected, destroyed, or otherwise modified for testing and experimentation.
+
+**Data security:** we will set a password for full disk encryption to reduce the risk of data loss in the event of theft. This laptop might contain limited API access and Wi-Fi credentials - limit the blast radius. The local user account password does not matter in our threat model - we use one secret FDE password for this laptop.
+
+## Prepare Install Media
+
+All of the install files required are in `./provision`
+
+### Create Ubuntu USB
+
+On your current PC do the following:
+
+1) Download Ubuntu Desktop or Server 26.04 LTS
+2) Check the SHASUM
+3) Create bootable USB media from the ISO
+
+On Windows PowerShell you can use the `Get-FileHash` command:
+
+```text
+Get-FileHash .\ubuntu-26.04-desktop-amd64.iso
+
+Algorithm       Hash                                                                   Path
+---------       ----                                                                   ----
+SHA256          487F87FAAF547EA30E0ABA4D5B53346292571256B25333A978DB1692BCEE9DD2       ubuntu-26.04-desktop-amd64.iso
+```
+
+Guides + Information:
+
+* https://ubuntu.com/download/desktop
+* https://ubuntu.com/desktop/docs/en/latest/tutorial/install-ubuntu-desktop/#create-a-bootable-usb-stick
+* https://en.wikipedia.org/wiki/Canonical_(company)
+
+#### Windows Host Copy
+
+Installing Rufus from Winget is an easy way to copy the ISO.
+
+```shell
+winget install Rufus.Rufus
+```
+
+#### Mac/Linux Host Copy
+
+Use `dd` to copy the ISO:
+
+```shell
+sudo dd if=ubuntu-26.04-desktop-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
+sync
+```
+
+### Create Cloud-Init USB
+
+#### Generate the Base64 Payload
+
+The Base64 encoded payload is our Ansible `playbook.yml` file.
+
+##### Linux/macOS
+
+Generate `playbook.b64`:
+
+```shell
+base64 -w0 playbook.yml > playbook.b64
+```
+
+Replace the placeholder in `user-data`:
+
+```shell
+sed -i "s|REPLACE_WITH_BASE64_ENCODED_ANSIBLE_PLAYBOOK_CONTENT|$(cat playbook.b64)|" user-data
+```
+
+##### Windows PowerShell
+
+Generate `playbook.b64`:
+
+```powershell
+[System.Convert]::ToBase64String((Get-Content .\playbook.yml -Encoding Byte)) | Set-Content .\playbook.b64 -NoNewline
+```
+
+Replace the placeholder in `user-data`:
+
+```powershell
+(Get-Content .\user-data -Raw).Replace('REPLACE_WITH_BASE64_ENCODED_ANSIBLE_PLAYBOOK_CONTENT', (Get-Content .\playbook.b64 -Raw)) | Set-Content .\user-data -NoNewline
+```
+
+#### Create the CIDATA USB
+
+The second USB key should contain the cloud-init configuration:
+
+1) Format it as FAT32 with the disk label `CIDATA`
+
+2) Copy these files onto it:
+   - `meta-data`
+   - `user-data`
+
+3) Update the disk encryption password in `user-data`
+
+On Ubuntu, validate the file with:
+
+```shell
+cloud-init schema --config-file user-data
+```
+
+#### Test the Cloud-Init Media
+
+You can test the `CIDATA` ISO on a VM configured with two DVD-ROM drives.
+
+From Ubuntu, install `xorriso` and build the ISO:
+
+```shell
+sudo apt-get install -y xorriso
+xorriso -as mkisofs -V CIDATA -o cidata.iso user-data meta-data
+```
+
+## Prepare Target Hardware
+
+Power on the device and enter the BIOS / UEFI. 
+
+On most Dell systems this is `F2`; some vendors use `ESC` or `F10`.
+
+1) Reset config to factory state (restart)
+2) Erase the hard disk under Maintenance or Security (then restart)
+3) Ensure Secure Boot is enabled.
+
+Power off the device.
+
+Hopefully, it does not have persistent UEFI malware, and all of the firmware is free from compromise. Formatting the disk will not help in this situation. Infected firmware on recycled hardware is outside our threat model here.
+
+## Install Ubuntu
+
+With both USB keys in the laptop, power on the device. If you did not format the hard disk in the BIOS, you might need to select the boot device, usually with `F12`.
+
+You should see the cloud-init data on screen. There will be only **one** manual action: select **Install** and press Enter.
+
+The system will reboot and run Ansible automatically.
+
+## First Boot and Setup
+
+Login and open a terminal:
+
+```shell
+uname -a
+```
+
+Setup the system with Ansible:
+
+```shell
+sudo su
+cd
+./do_setup.sh
+```
+
+Reboot, then login to the shell again:
+
+```shell
+docker run hello-world
+```

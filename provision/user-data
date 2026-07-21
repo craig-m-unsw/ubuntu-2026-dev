@@ -1,0 +1,67 @@
+#cloud-config
+#
+# this yaml file is cloud-init data for Ubuntu 26.04 LTS
+# https://docs.cloud-init.io/en/latest/index.html
+#
+autoinstall:
+  version: 1
+  keyboard:
+    layout: us
+  identity:
+    hostname: ubuntu2604
+    username: sysadmin
+    # mkpasswd --stdin <<< "test-desktop-2026"
+    password: "$y$j9T$QN8933VaJGFAH7/eT3lkf/$mb3mxK6X97TLx.6K6nV2lk32wFmGoZCRU1EWDchLIkD"
+  ssh:
+    install-server: true
+    emit_keys_to_console: false
+    allow-pw: false
+  storage:
+    layout:
+      name: lvm
+      password: "secure-at-rest"
+  user-data:
+    timezone: Australia/Sydney
+    locale: en_US.UTF-8
+    package_update: false
+    package_upgrade: false
+    write_files:
+      - path: /etc/ansible/facts.d/aainstall.fact
+        owner: 'root:root'
+        permissions: '0755'
+        content: |
+          #!/usr/bin/env python3
+          import json
+          print(json.dumps({
+            "prime_user" : "sysadmin"
+          }))
+      - path: /root/do_setup.sh
+        owner: root:root
+        permissions: '0755'
+        content: |
+          #!/usr/bin/env sh
+          echo "starting do_setup.sh" | logger
+          apt-get update
+          apt full-upgrade -y
+          snap fresh
+          apt-get install -y software-properties-common curl ansible python3 python3-pip git  
+          ansible-playbook -i "localhost," -c local /root/playbook.yml -e prime_user=sysadmin
+          echo "finished do_setup.sh" | logger
+      - path: /root/playbook.yml
+        owner: root:root
+        permissions: '0644'
+        encoding: b64
+        content: |
+          REPLACE_WITH_BASE64_ENCODED_ANSIBLE_PLAYBOOK_CONTENT
+    runcmd:
+      - logger "cloud-init runcmd ran"
+    final_message: |
+      Cloud-init completed successfully.
+  output:
+      init:
+          output: "> /var/log/cloud-init.out"
+          error: "> /var/log/cloud-init.err"
+      config: "tee -a /var/log/cloud-config.log"
+      final:
+          - ">> /var/log/cloud-final.out"
+          - "/var/log/cloud-final.err"

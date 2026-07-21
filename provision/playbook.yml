@@ -1,0 +1,420 @@
+---
+#
+# Ansible playbook to prep Ubuntu desktop
+# https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_intro.html
+#
+# Run with: 
+#
+#   $ sudo ansible-playbook -i "localhost," -c local /root/playbook.yml -e prime_user=sysadmin
+#
+- hosts: localhost
+  connection: local
+  become: true
+  gather_facts: true
+  #####
+  vars:
+  #####
+    # prime user with sudo
+    prime_user_home: "/home/{{ prime_user }}"
+    # create regular user without sudo / root access
+    # note: this user will be part of the Docker group, which means this user can do Privilege Escalation tactics 
+    # to get root (this is how Docker works)
+    sandbox_user: "bot-dev"
+    # deault apt packages
+    packages_install:
+      - git
+      - build-essential
+      - jq
+      - bats
+      - dos2unix
+      - make
+      - gnupg
+      - mokutil
+      - inotify-tools
+      - nmap
+      - gpg
+      - uuid
+      - tcpdump
+      - wireshark
+      - iotop
+      - htop
+      - tree
+      - tmux
+      - sqlite-utils
+      - bc
+      - mc
+      - vim
+      - nano
+      - apt-transport-https
+      - software-properties-common
+      - tig
+      - curl
+      - bzip2
+      - wget
+      - unzip
+      - zip
+      - whois
+      - rsync
+      - expect
+      - dnsutils
+      - python3-venv
+      - bubblewrap
+      - apparmor 
+      - apparmor-utils
+      - auditd
+      - openscap-scanner
+      - openscap-common
+    hashicorp_packages:
+      - packer
+      - vagrant
+      - vault
+      - terraform
+    microsoft_packages:
+      - code
+      - powershell
+      - gh
+    nodejs_major_version: "22.x"
+    nodejs_packages:
+      - nodejs
+    docker_packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    create_folders:
+      - dir: /etc/opt/keyrings
+        mode: '0755'
+        owner: root
+        group: root
+      - dir: /etc/ansible/facts.d/
+        mode: '0755'
+        owner: root
+        group: root
+      - dir: /opt/linuxmoe/
+        mode: '0755'
+        owner: root
+        group: root
+      - dir: /opt/linuxmoe/downloads/
+        mode: '0755'
+        owner: root
+        group: root
+      - dir: /opt/linuxmoe/docs/
+        mode: '0755'
+        owner: root
+        group: root
+  ######
+  tasks:
+  ######
+    - name: Validate host environment
+      block:
+        - name: Check required variables
+          ansible.builtin.assert:
+            that:
+              - create_folders is defined
+              - packages_install is defined
+              - prime_user is defined
+              - prime_user | length > 0
+              - sandbox_user is defined
+              - sandbox_user | length > 0
+            fail_msg: "Required node variables are not defined"
+    - name: Ensure base directories exist
+      ansible.builtin.file:
+        path: "{{ item.dir }}"
+        state: directory
+        mode: "{{ item.mode }}"
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+      loop: "{{ create_folders }}"
+    # Software setup (base Ubuntu OS)
+    - name: Software internal Ubuntu repo
+      tags: [software]
+      block:
+        - name: Update apt cache (if needed)
+          ansible.builtin.apt:
+            update_cache: true
+            cache_valid_time: 3600
+        - name: Ensure required packages are installed
+          ansible.builtin.apt:
+            name: "{{ packages_install }}"
+            state: present
+          register: install_result
+          retries: 3
+          delay: 5
+          until: install_result is succeeded
+        - name: Ensure SSHD is installed but not started
+          block:
+            - name: Install OpenSSH server without starting it
+              ansible.builtin.apt:
+                name: openssh-server
+                state: present
+                policy_rc_d: 101
+            - name: Ensure SSHD is stopped and disabled
+              ansible.builtin.service:
+                name: ssh
+                state: stopped
+                enabled: false
+    # Software external resources
+    - name: Setup external software repositories
+      tags: [software]
+      block:
+        - name: Setup HashiCorp repository
+          block:
+            - name: Install HashiCorp repository signing key
+              ansible.builtin.get_url:
+                url: https://apt.releases.hashicorp.com/gpg
+                dest: /etc/opt/keyrings/hashicorp.asc
+                checksum: sha256:cafb01beac341bf2a9ba89793e6dd2468110291adfbb6c62ed11a0cde6c09029
+                mode: '0644'
+            - name: Add HashiCorp repository
+              ansible.builtin.apt_repository:
+                repo: "deb [signed-by=/etc/opt/keyrings/hashicorp.asc] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+                filename: hashicorp
+                state: present
+                update_cache: false
+            - name: Update apt cache for HashiCorp repository
+              ansible.builtin.apt:
+                update_cache: true
+            - name: Install HashiCorp packages
+              ansible.builtin.apt:
+                name: "{{ hashicorp_packages }}"
+                state: present
+              register: hashicorp_install_result
+              retries: 3
+              delay: 5
+              until: hashicorp_install_result is succeeded
+        - name: Setup Microsoft repositories
+          block:
+            - name: Download Microsoft repository config package
+              ansible.builtin.get_url:
+                url: "https://packages.microsoft.com/config/ubuntu/{{ ansible_distribution_version }}/packages-microsoft-prod.deb"
+                dest: /tmp/packages-microsoft-prod.deb
+                mode: '0644'
+            - name: Install Microsoft repository config package
+              ansible.builtin.apt:
+                deb: /tmp/packages-microsoft-prod.deb
+            - name: Install Visual Studio Code repository signing key
+              ansible.builtin.get_url:
+                url: https://packages.microsoft.com/keys/microsoft.asc
+                dest: /etc/opt/keyrings/microsoft.asc
+                checksum: sha256:2fa9c05d591a1582a9aba276272478c262e95ad00acf60eaee1644d93941e3c6
+                mode: '0644'
+              register: vscode_key_download
+            - name: Check Visual Studio Code keyring
+              ansible.builtin.stat:
+                path: /etc/opt/keyrings/microsoft-vscode.gpg
+              register: vscode_keyring
+            - name: Convert Visual Studio Code signing key to gpg keyring
+              ansible.builtin.command:
+                argv:
+                  - gpg
+                  - --dearmor
+                  - --batch
+                  - --yes
+                  - --output
+                  - /etc/opt/keyrings/microsoft-vscode.gpg
+                  - /etc/opt/keyrings/microsoft.asc
+              when: vscode_key_download is changed or not vscode_keyring.stat.exists
+            - name: Ensure Visual Studio Code keyring permissions
+              ansible.builtin.file:
+                path: /etc/opt/keyrings/microsoft-vscode.gpg
+                mode: '0644'
+                owner: root
+                group: root
+                state: file
+            - name: Add Visual Studio Code repository
+              ansible.builtin.apt_repository:
+                repo: "deb [arch=amd64 signed-by=/etc/opt/keyrings/microsoft-vscode.gpg] https://packages.microsoft.com/repos/code stable main"
+                filename: vscode
+                state: present
+                update_cache: false
+            - name: Install GitHub CLI repository signing key
+              ansible.builtin.get_url:
+                url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+                dest: /etc/opt/keyrings/githubcli-archive-keyring.gpg
+                checksum: sha256:6084d5d7bd8e288441e0e94fc6275570895da18e6751f70f057485dc2d1a811b
+                mode: '0644'
+            - name: Add GitHub CLI repository
+              ansible.builtin.apt_repository:
+                repo: "deb [arch=amd64 signed-by=/etc/opt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"
+                filename: github-cli
+                state: present
+                update_cache: false
+            - name: Update apt cache for Microsoft repositories
+              ansible.builtin.apt:
+                update_cache: true
+            - name: Install Microsoft repository packages
+              ansible.builtin.apt:
+                name: "{{ microsoft_packages }}"
+                state: present
+              register: microsoft_install_result
+              retries: 3
+              delay: 5
+              until: microsoft_install_result is succeeded
+        - name: Setup NodeSource repository
+          block:
+            - name: Install NodeSource repository signing key
+              ansible.builtin.get_url:
+                url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+                dest: /etc/opt/keyrings/nodesource-repo.gpg.key
+                checksum: sha256:80e9565feae60aa063f46be56e8f84f627d6daa956899af37a1307c9288aa6af
+                mode: '0644'
+              register: nodesource_key_download
+            - name: Check NodeSource keyring
+              ansible.builtin.stat:
+                path: /etc/opt/keyrings/nodesource.gpg
+              register: nodesource_keyring
+            - name: Convert NodeSource signing key to gpg keyring
+              ansible.builtin.command:
+                argv:
+                  - gpg
+                  - --dearmor
+                  - --batch
+                  - --yes
+                  - --output
+                  - /etc/opt/keyrings/nodesource.gpg
+                  - /etc/opt/keyrings/nodesource-repo.gpg.key
+              when: nodesource_key_download is changed or not nodesource_keyring.stat.exists
+            - name: Ensure NodeSource keyring permissions
+              ansible.builtin.file:
+                path: /etc/opt/keyrings/nodesource.gpg
+                mode: '0644'
+                owner: root
+                group: root
+                state: file
+            - name: Add NodeSource repository
+              ansible.builtin.apt_repository:
+                repo: "deb [arch=amd64 signed-by=/etc/opt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_{{ nodejs_major_version }} nodistro main"
+                filename: nodesource
+                state: present
+                update_cache: false
+            - name: Update apt cache for NodeSource repository
+              ansible.builtin.apt:
+                update_cache: true
+            - name: Install Node.js packages
+              ansible.builtin.apt:
+                name: "{{ nodejs_packages }}"
+                state: present
+              register: nodejs_install_result
+              retries: 3
+              delay: 5
+              until: nodejs_install_result is succeeded
+        - name: Setup Docker repository
+          block:
+            - name: Install Docker repository signing key
+              ansible.builtin.get_url:
+                url: https://download.docker.com/linux/ubuntu/gpg
+                dest: /etc/opt/keyrings/docker.asc
+                checksum: sha256:1500c1f56fa9e26b9b8f42452a553675796ade0807cdce11975eb98170b3a570
+                mode: '0644'
+            - name: Add Docker repository
+              ansible.builtin.apt_repository:
+                repo: "deb [arch=amd64 signed-by=/etc/opt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+                filename: docker
+                state: present
+                update_cache: false
+            - name: Update apt cache for Docker repository
+              ansible.builtin.apt:
+                update_cache: true
+            - name: Install Docker packages
+              ansible.builtin.apt:
+                name: "{{ docker_packages }}"
+                state: present
+              register: docker_install_result
+              retries: 3
+              delay: 5
+              until: docker_install_result is succeeded
+    - name: Configure system
+      block:
+        - name: Harden /proc mount options in /etc/fstab
+          ansible.builtin.lineinfile:
+            path: /etc/fstab
+            regexp: '^proc\s+/proc\s+proc\s+'
+            line: 'proc    /proc    proc    defaults,nosuid,nodev,noexec,relatime,hidepid=2     0     0'
+            state: present
+            backup: true
+        - name: Configure Git
+          block:
+            - name: Configure Git identities
+              ansible.builtin.command:
+                argv:
+                  - git
+                  - config
+                  - --global
+                  - "{{ item.key }}"
+                  - "{{ item.value }}"
+              become_user: "{{ item.user }}"
+              environment:
+                HOME: "{{ item.home }}"
+              loop:
+                - { user: root, home: /root, key: user.name, value: root }
+                - { user: root, home: /root, key: user.email, value: root@localhost }
+                - { user: "{{ prime_user }}", home: "{{ prime_user_home }}", key: user.name, value: "{{ prime_user }}" }
+                - { user: "{{ prime_user }}", home: "{{ prime_user_home }}", key: user.email, value: "{{ prime_user }}"@localhost }
+              changed_when: false
+            - name: Generate SSH keys
+              ansible.builtin.user:
+                name: "{{ item }}"
+                generate_ssh_key: true
+                ssh_key_type: ed25519
+                ssh_key_file: .ssh/id_ed25519
+              loop:
+                - root
+                - "{{ prime_user }}"
+        - name: Ensure Docker group exists
+          ansible.builtin.group:
+            name: docker
+            state: present
+        - name: Add devops user to Docker group
+          ansible.builtin.user:
+            name: "{{ prime_user }}"
+            groups: docker
+            append: true
+    - name: Add sandbox user
+      block:
+        - name: Check whether sandbox user exists
+          ansible.builtin.getent:
+            database: passwd
+            key: "{{ sandbox_user }}"
+            fail_key: false
+        - name: Generate sandbox password
+          ansible.builtin.set_fact:
+            sandbox_user_password: "{{ lookup('ansible.builtin.password', '/dev/null length=24 chars=ascii_letters,digits') }}"
+          when: ansible_facts.getent_passwd.get(sandbox_user) is none
+        - name: Ensure sandbox user exists without sudo
+          ansible.builtin.user:
+            name: "{{ sandbox_user }}"
+            shell: /bin/bash
+            create_home: true
+            groups: ""
+            append: false
+            password: "{{ sandbox_user_password | password_hash('sha512') if sandbox_user_password is defined else omit }}"
+            update_password: on_create
+        - name: Store sandbox password for devops user
+          ansible.builtin.lineinfile:
+            path: "/home/{{ prime_user }}/passwords.txt"
+            create: true
+            owner: "{{ prime_user }}"
+            group: "{{ prime_user }}"
+            mode: '0600'
+            regexp: '^{{ sandbox_user | regex_escape }}:'
+            line: "{{ sandbox_user }}: {{ sandbox_user_password }}"
+          when: sandbox_user_password is defined
+        - name: Add sandbox_user user to Docker group
+          ansible.builtin.user:
+            name: "{{ sandbox_user }}"
+            groups: docker
+            append: true
+    - name: setup files
+      block:
+        - name: finished
+          copy:
+            dest: /etc/opt/installed.txt
+            owner: root
+            group: root
+            mode: '0644'
+            content: |
+              Installed successfully using:
+              * Ubuntu Autoinstall
+              * Cloud-Init
+              * Ansible
