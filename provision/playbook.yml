@@ -347,10 +347,22 @@
               environment:
                 HOME: "{{ item.home }}"
               loop:
-                - { user: root, home: /root, key: user.name, value: root }
-                - { user: root, home: /root, key: user.email, value: root@localhost }
-                - { user: "{{ prime_user }}", home: "{{ prime_user_home }}", key: user.name, value: "{{ prime_user }}" }
-                - { user: "{{ prime_user }}", home: "{{ prime_user_home }}", key: user.email, value: "{{ prime_user }}"@localhost }
+                - user: root
+                  home: /root
+                  key: user.name
+                  value: root
+                - user: root
+                  home: /root
+                  key: user.email
+                  value: root@localhost
+                - user: "{{ prime_user }}"
+                  home: "{{ prime_user_home }}"
+                  key: user.name
+                  value: "{{ prime_user }}"
+                - user: "{{ prime_user }}"
+                  home: "{{ prime_user_home }}"
+                  key: user.email
+                  value: "{{ prime_user }}@localhost"
               changed_when: false
             - name: Generate SSH keys
               ansible.builtin.user:
