@@ -45,7 +45,7 @@ autoinstall:
           apt full-upgrade -y
           snap fresh
           apt-get install -y software-properties-common curl ansible python3 python3-pip git  
-          ansible-playbook -i "localhost," -c local /root/playbook.yml -e prime_user=sysadmin
+          ansible-playbook -i "localhost," -c local /root/playbook.yml -e prime_user=sysadmin -vv
           echo "finished do_setup.sh" | logger
       - path: /root/playbook.yml
         owner: root:root

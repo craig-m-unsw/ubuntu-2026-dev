@@ -152,7 +152,9 @@ With both USB keys in the laptop, power on the device. If you did not format the
 
 You should see the cloud-init data on screen. There will be only **one** manual action: select **Install** and press Enter.
 
-The system will reboot and run Ansible automatically.
+![cloud-init-install](/docs/cloud-init-install.png "cloud-init-install")
+
+The system will reboot automatically after this.
 
 ## First Boot and Setup
 

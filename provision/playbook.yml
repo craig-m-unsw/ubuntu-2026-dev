@@ -71,7 +71,6 @@
       - terraform
     microsoft_packages:
       - code
-      - powershell
       - gh
     nodejs_major_version: "22.x"
     nodejs_packages:
@@ -168,7 +167,7 @@
                 mode: '0644'
             - name: Add HashiCorp repository
               ansible.builtin.apt_repository:
-                repo: "deb [signed-by=/etc/opt/keyrings/hashicorp.asc] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+                repo: "deb [signed-by=/etc/opt/keyrings/hashicorp.asc] https://apt.releases.hashicorp.com resolute main"
                 filename: hashicorp
                 state: present
                 update_cache: false
@@ -187,7 +186,7 @@
           block:
             - name: Download Microsoft repository config package
               ansible.builtin.get_url:
-                url: "https://packages.microsoft.com/config/ubuntu/{{ ansible_distribution_version }}/packages-microsoft-prod.deb"
+                url: https://packages.microsoft.com/config/ubuntu/26.04/packages-microsoft-prod.deb
                 dest: /tmp/packages-microsoft-prod.deb
                 mode: '0644'
             - name: Install Microsoft repository config package
@@ -257,7 +256,7 @@
               ansible.builtin.get_url:
                 url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
                 dest: /etc/opt/keyrings/nodesource-repo.gpg.key
-                checksum: sha256:80e9565feae60aa063f46be56e8f84f627d6daa956899af37a1307c9288aa6af
+                checksum: sha256:b42e0321dabdc24e892115da705cf061167eac12a317f23d329862d0aa0a271d
                 mode: '0644'
               register: nodesource_key_download
             - name: Check NodeSource keyring
@@ -309,7 +308,7 @@
                 mode: '0644'
             - name: Add Docker repository
               ansible.builtin.apt_repository:
-                repo: "deb [arch=amd64 signed-by=/etc/opt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+                repo: "deb [arch=amd64 signed-by=/etc/opt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu resolute stable"
                 filename: docker
                 state: present
                 update_cache: false
