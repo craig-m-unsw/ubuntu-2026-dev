@@ -170,7 +170,7 @@
     # Enable/Disable this in /etc/ansible/facts.d/aainstall.fact
     - name: Setup external software repositories
       tags: [software]
-      when: ansible_local.aainstall.ff_extrepo_enabled | bool
+      when: hostvars[inventory_hostname]['ansible_local']['aainstall']['ff_extrepo_enabled'] | bool
       block:
         - name: Setup HashiCorp repository
           block:
