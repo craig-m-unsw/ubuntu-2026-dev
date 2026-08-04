@@ -16,7 +16,7 @@ An older Intel quad Core i5 with at least 8 GB of RAM and 20 GB disk is sufficie
 * x1 USB Key for Ubuntu
 * x1 USB key for configuration data
 
-### security model notes
+### security notes
 
 **Hardware:** Hopefully, it does not have persistent UEFI malware, and all of the firmware is free from compromise. Formatting the disk will not help in this situation. Infected firmware being found on recycled hardware is outside our threat model here.
 
@@ -76,6 +76,8 @@ sync
 ```shell
 cd provision
 ```
+
+Edit the ansible playbook as required.
 
 ##### Linux/macOS
 
@@ -159,3 +161,10 @@ The system will reboot automatically after this.
 ## First Boot and Setup
 
 Login and open a terminal.
+
+```shell
+journalctl -f
+```
+
+You should see ansible installing the system.
+

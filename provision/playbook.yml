@@ -5,7 +5,7 @@
 #
 # Run with: 
 #
-#   $ sudo ansible-playbook -i "localhost," -c local /root/playbook.yml -e prime_user=sysadmin
+#   $ sudo ansible-playbook -i "localhost," -c local playbook.yml -e prime_user=sysadmin
 
 - hosts: localhost
   connection: local
@@ -128,8 +128,6 @@
               - packages_install is defined
               - prime_user is defined
               - prime_user | length > 0
-              - sandbox_user is defined
-              - sandbox_user | length > 0
             fail_msg: "Required node variables are not defined"
     - name: Ensure base directories exist
       ansible.builtin.file:

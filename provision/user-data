@@ -19,6 +19,7 @@ autoinstall:
   storage:
     layout:
       name: lvm
+      # the password for full disk encryption
       password: "secure-at-rest"
   user-data:
     timezone: Australia/Sydney
@@ -42,6 +43,14 @@ autoinstall:
             "prime_user" : "sysadmin",
             "ff_extrepo_enabled" : "true"
           }))
+      # Runs every boot
+      - path: /var/lib/cloud/scripts/per-boot/hello.sh
+        owner: root:root
+        permissions: '0755'
+        content: |
+          #!/usr/bin/env sh
+          echo "hello" | logger
+      # Runs once during the lifetime of this machine
       - path: /var/lib/cloud/scripts/per-instance/do_setup.sh
         owner: root:root
         permissions: '0755'
