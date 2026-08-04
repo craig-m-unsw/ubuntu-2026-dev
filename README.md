@@ -46,12 +46,6 @@ Algorithm       Hash                                                            
 SHA256          487F87FAAF547EA30E0ABA4D5B53346292571256B25333A978DB1692BCEE9DD2       ubuntu-26.04-desktop-amd64.iso
 ```
 
-Guides + Information:
-
-* https://ubuntu.com/download/desktop
-* https://ubuntu.com/desktop/docs/en/latest/tutorial/install-ubuntu-desktop/#create-a-bootable-usb-stick
-* https://en.wikipedia.org/wiki/Canonical_(company)
-
 #### Windows Host Copy
 
 Installing Rufus from Winget is an easy way to copy the ISO.
@@ -162,9 +156,9 @@ The system will reboot automatically after this.
 
 Login and open a terminal.
 
+Wait until cloud-init is finished:
+
 ```shell
-journalctl -f
+sudo cloud-init status --wait
+sudo cloud-init status --long
 ```
-
-You should see ansible installing the system.
-
