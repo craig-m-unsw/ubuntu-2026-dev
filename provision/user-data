@@ -42,7 +42,7 @@ autoinstall:
             "prime_user" : "sysadmin",
             "ff_extrepo_enabled" : "true"
           }))
-      - path: /root/do_setup.sh
+      - path: /var/lib/cloud/scripts/per-instance/do_setup.sh
         owner: root:root
         permissions: '0755'
         content: |

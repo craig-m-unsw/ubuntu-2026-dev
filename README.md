@@ -158,16 +158,4 @@ The system will reboot automatically after this.
 
 ## First Boot and Setup
 
-Login and open a terminal, now setup the system with Ansible:
-
-```shell
-sudo su
-cd
-./do_setup.sh
-```
-
-Reboot, then login to the shell again:
-
-```shell
-docker run hello-world
-```
+Login and open a terminal.
