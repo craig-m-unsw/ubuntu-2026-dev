@@ -8,10 +8,10 @@ autoinstall:
   keyboard:
     layout: us
   identity:
-    hostname: ubuntu2604
+    hostname: linuxdev
     username: sysadmin
-    # mkpasswd --stdin <<< "test-desktop-2026"
-    password: "$y$j9T$QN8933VaJGFAH7/eT3lkf/$mb3mxK6X97TLx.6K6nV2lk32wFmGoZCRU1EWDchLIkD"
+    # mkpasswd --stdin <<< "ubuntu2026"
+    password: "$y$j9T$s.Ush1PWBYHSRGmZMN5FC.$VYlLJHurnxOdbqosX0WoiHFoh3d9bNu4MchB2whGSb8"
   ssh:
     install-server: true
     emit_keys_to_console: false
@@ -26,6 +26,12 @@ autoinstall:
     package_update: false
     package_upgrade: false
     write_files:
+      - path: /etc/sudoers.d/90-sysadmin
+        owner: 'root:root'
+        permissions: '0440'
+        content: |
+          # allow sysadmin user to sudo (use root) without password
+          sysadmin ALL=(ALL) NOPASSWD:ALL
       - path: /etc/ansible/facts.d/aainstall.fact
         owner: 'root:root'
         permissions: '0755'
@@ -33,7 +39,8 @@ autoinstall:
           #!/usr/bin/env python3
           import json
           print(json.dumps({
-            "prime_user" : "sysadmin"
+            "prime_user" : "sysadmin",
+            "ff_extrepo_enabled" : "true"
           }))
       - path: /root/do_setup.sh
         owner: root:root
@@ -44,8 +51,11 @@ autoinstall:
           apt-get update
           apt full-upgrade -y
           snap fresh
-          apt-get install -y software-properties-common curl ansible python3 python3-pip git  
-          ansible-playbook -i "localhost," -c local /root/playbook.yml -e prime_user=sysadmin -vv
+          apt-get install -y software-properties-common curl ansible python3 python3-pip git
+          log_dir=$(mktemp -d /tmp/ansible-log.XXXXXX)
+          log_file="$log_dir/ansible.log"
+          echo "Ansible log: $log_file"
+          ansible-playbook -i "localhost," -c local /root/playbook.yml -e prime_user=sysadmin -vv 2>&1 | tee "$log_file"
           echo "finished do_setup.sh" | logger
       - path: /root/playbook.yml
         owner: root:root

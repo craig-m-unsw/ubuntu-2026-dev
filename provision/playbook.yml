@@ -1,28 +1,30 @@
 ---
-#
+
 # Ansible playbook to prep Ubuntu desktop
 # https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_intro.html
 #
 # Run with: 
 #
 #   $ sudo ansible-playbook -i "localhost," -c local /root/playbook.yml -e prime_user=sysadmin
-#
+
 - hosts: localhost
   connection: local
   become: true
   gather_facts: true
+
   #####
   vars:
   #####
+
     # prime user with sudo
     prime_user_home: "/home/{{ prime_user }}"
-    # create regular user without sudo / root access
-    # note: this user will be part of the Docker group, which means this user can do Privilege Escalation tactics 
-    # to get root (this is how Docker works)
-    sandbox_user: "bot-dev"
-    # deault apt packages
+    sudo_audit_user: "{{ prime_user }}"
+    sudo_iolog_dir: /var/log/sudo-io
+
+    # apt packages from default Ubuntu software repositories
     packages_install:
       - git
+      - tig
       - build-essential
       - jq
       - bats
@@ -36,6 +38,7 @@
       - uuid
       - tcpdump
       - wireshark
+      - socat
       - iotop
       - htop
       - tree
@@ -47,7 +50,6 @@
       - nano
       - apt-transport-https
       - software-properties-common
-      - tig
       - curl
       - bzip2
       - wget
@@ -57,13 +59,22 @@
       - rsync
       - expect
       - dnsutils
+      - qemu-system
+      - qemu-kvm
+      - libvirt-daemon-system
+      - libvirt-clients
+      - bridge-utils
+      - virt-manager
       - python3-venv
+      - python3 
+      - python3-pip
       - bubblewrap
       - apparmor 
       - apparmor-utils
       - auditd
       - openscap-scanner
       - openscap-common
+
     hashicorp_packages:
       - packer
       - vagrant
@@ -81,6 +92,7 @@
       - containerd.io
       - docker-buildx-plugin
       - docker-compose-plugin
+
     create_folders:
       - dir: /etc/opt/keyrings
         mode: '0755'
@@ -102,9 +114,11 @@
         mode: '0755'
         owner: root
         group: root
+
   ######
   tasks:
   ######
+
     - name: Validate host environment
       block:
         - name: Check required variables
@@ -125,6 +139,7 @@
         owner: "{{ item.owner }}"
         group: "{{ item.group }}"
       loop: "{{ create_folders }}"
+
     # Software setup (base Ubuntu OS)
     - name: Software internal Ubuntu repo
       tags: [software]
@@ -153,9 +168,12 @@
                 name: ssh
                 state: stopped
                 enabled: false
+
     # Software external resources
+    # Enable/Disable this in /etc/ansible/facts.d/aainstall.fact
     - name: Setup external software repositories
       tags: [software]
+      when: ansible_local.aainstall.ff_extrepo_enabled | bool
       block:
         - name: Setup HashiCorp repository
           block:
@@ -187,11 +205,11 @@
             - name: Download Microsoft repository config package
               ansible.builtin.get_url:
                 url: https://packages.microsoft.com/config/ubuntu/26.04/packages-microsoft-prod.deb
-                dest: /tmp/packages-microsoft-prod.deb
+                dest: /opt/linuxmoe/downloads/packages-microsoft-prod.deb
                 mode: '0644'
             - name: Install Microsoft repository config package
               ansible.builtin.apt:
-                deb: /tmp/packages-microsoft-prod.deb
+                deb: /opt/linuxmoe/downloads/packages-microsoft-prod.deb
             - name: Install Visual Studio Code repository signing key
               ansible.builtin.get_url:
                 url: https://packages.microsoft.com/keys/microsoft.asc
@@ -323,6 +341,7 @@
               retries: 3
               delay: 5
               until: docker_install_result is succeeded
+
     - name: Configure system
       block:
         - name: Harden /proc mount options in /etc/fstab
@@ -381,43 +400,48 @@
             name: "{{ prime_user }}"
             groups: docker
             append: true
-    - name: Add sandbox user
-      block:
-        - name: Check whether sandbox user exists
-          ansible.builtin.getent:
-            database: passwd
-            key: "{{ sandbox_user }}"
-            fail_key: false
-        - name: Generate sandbox password
-          ansible.builtin.set_fact:
-            sandbox_user_password: "{{ lookup('ansible.builtin.password', '/dev/null length=24 chars=ascii_letters,digits') }}"
-          when: ansible_facts.getent_passwd.get(sandbox_user) is none
-        - name: Ensure sandbox user exists without sudo
+        - name: Add devops user to KVM and libvirt groups
           ansible.builtin.user:
-            name: "{{ sandbox_user }}"
-            shell: /bin/bash
-            create_home: true
-            groups: ""
-            append: false
-            password: "{{ sandbox_user_password | password_hash('sha512') if sandbox_user_password is defined else omit }}"
-            update_password: on_create
-        - name: Store sandbox password for devops user
-          ansible.builtin.lineinfile:
-            path: "/home/{{ prime_user }}/passwords.txt"
-            create: true
-            owner: "{{ prime_user }}"
-            group: "{{ prime_user }}"
-            mode: '0600'
-            regexp: '^{{ sandbox_user | regex_escape }}:'
-            line: "{{ sandbox_user }}: {{ sandbox_user_password }}"
-          when: sandbox_user_password is defined
-        - name: Add sandbox_user user to Docker group
-          ansible.builtin.user:
-            name: "{{ sandbox_user }}"
-            groups: docker
+            name: "{{ prime_user }}"
+            groups:
+              - kvm
+              - libvirt
             append: true
-    - name: setup files
+
+    - name: finish off
       block:
+        - name: Update all apt packages
+          ansible.builtin.apt:
+            update_cache: true
+            upgrade: dist
+        - name: Refresh snaps
+          ansible.builtin.command: snap refresh
+        - name: Ensure sudo I/O log directory exists
+          ansible.builtin.file:
+            path: "{{ sudo_iolog_dir }}"
+            state: directory
+            owner: root
+            group: root
+            mode: '0700'
+        - name: Enable sudo audit logging for the development account
+          ansible.builtin.copy:
+            dest: /etc/sudoers.d/90-development-sudo-audit
+            owner: root
+            group: root
+            mode: '0440'
+            validate: /usr/sbin/visudo -cf %s
+            content: |
+              # Managed by Ansible — do not edit.
+              # Run sudo commands through a pseudo-terminal so terminal activity can be recorded consistently.
+              Defaults:{{ sudo_audit_user }} use_pty
+              # Capture command output to preserve what privileged commands returned.
+              Defaults:{{ sudo_audit_user }} log_output
+              # Capture terminal and piped input for complete replay; it may include passwords, API tokens, and secrets.
+              Defaults:{{ sudo_audit_user }} log_input
+              # Record each sudo command's exit status for troubleshooting and audit trails.
+              Defaults:{{ sudo_audit_user }} log_exit_status
+              # Store the per-session I/O logs in the managed local audit directory.
+              Defaults:{{ sudo_audit_user }} iolog_dir="{{ sudo_iolog_dir }}"
         - name: finished
           copy:
             dest: /etc/opt/installed.txt
