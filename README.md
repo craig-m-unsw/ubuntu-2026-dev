@@ -159,6 +159,7 @@ Login and open a terminal.
 Wait until cloud-init is finished:
 
 ```shell
-sudo cloud-init status --wait
-sudo cloud-init status --long
+journalctl -f
 ```
+
+When `/etc/opt/installed.txt` is created setup has finished.
