@@ -19,7 +19,6 @@
     # prime user with sudo
     prime_user_home: "/home/{{ prime_user }}"
     sudo_audit_user: "{{ prime_user }}"
-    sudo_iolog_dir: /var/log/sudo-io
 
     # apt packages from default Ubuntu software repositories
     packages_install:
@@ -413,32 +412,6 @@
             upgrade: dist
         - name: Refresh snaps
           ansible.builtin.command: snap refresh
-        - name: Ensure sudo I/O log directory exists
-          ansible.builtin.file:
-            path: "{{ sudo_iolog_dir }}"
-            state: directory
-            owner: root
-            group: root
-            mode: '0700'
-        - name: Enable sudo audit logging for the development account
-          ansible.builtin.copy:
-            dest: /etc/sudoers.d/90-development-sudo-audit
-            owner: root
-            group: root
-            mode: '0440'
-            validate: /usr/sbin/visudo -cf %s
-            content: |
-              # Managed by Ansible — do not edit.
-              # Run sudo commands through a pseudo-terminal so terminal activity can be recorded consistently.
-              Defaults:{{ sudo_audit_user }} use_pty
-              # Capture command output to preserve what privileged commands returned.
-              Defaults:{{ sudo_audit_user }} log_output
-              # Capture terminal and piped input for complete replay; it may include passwords, API tokens, and secrets.
-              Defaults:{{ sudo_audit_user }} log_input
-              # Record each sudo command's exit status for troubleshooting and audit trails.
-              Defaults:{{ sudo_audit_user }} log_exit_status
-              # Store the per-session I/O logs in the managed local audit directory.
-              Defaults:{{ sudo_audit_user }} iolog_dir="{{ sudo_iolog_dir }}"
         - name: finished
           copy:
             dest: /etc/opt/installed.txt
