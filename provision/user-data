@@ -10,7 +10,7 @@ autoinstall:
   identity:
     hostname: linuxdev
     username: sysadmin
-    # mkpasswd --stdin <<< "ubuntu2026"
+    # the hash of user password is created by this command: mkpasswd --stdin <<< "ubuntu2026"
     password: "$y$j9T$s.Ush1PWBYHSRGmZMN5FC.$VYlLJHurnxOdbqosX0WoiHFoh3d9bNu4MchB2whGSb8"
   ssh:
     install-server: true
@@ -43,15 +43,22 @@ autoinstall:
             "prime_user" : "sysadmin",
             "ff_extrepo_enabled" : "true"
           }))
-      # Runs every boot
+      # Runs on every boot
       - path: /var/lib/cloud/scripts/per-boot/hello.sh
         owner: root:root
         permissions: '0755'
         content: |
           #!/usr/bin/env sh
-          echo "hello" | logger
+          echo "hello-boot" | logger
       # Runs once during the lifetime of this machine
-      - path: /var/lib/cloud/scripts/per-instance/do_setup.sh
+      - path: /var/lib/cloud/scripts/per-instance/hello.sh
+        owner: root:root
+        permissions: '0755'
+        content: |
+          #!/usr/bin/env sh
+          echo "hello-onetime" | logger
+      # the Setup script
+      - path: /root/do_setup.sh
         owner: root:root
         permissions: '0755'
         content: |

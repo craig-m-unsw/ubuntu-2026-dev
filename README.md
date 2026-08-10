@@ -4,7 +4,7 @@ Ubuntu 26.04 LTS was released on April 23, 2026, and it will be supported until 
 
 It makes a great development platform.
 
-> A **junk computer** is hardware sourced from e-waste, recycling, or surplus and used only for engineering, AI agent, learning, and development work. It is isolated from personal and production environments, holds no sensitive data, is never used for personal accounts, and may be reformatted, encrypted, reimaged, infected, destroyed, or otherwise modified for testing and experimentation.
+> A **junk computer** is hardware sourced from e-waste, recycling, or surplus and used only for engineering, AI agents, learning, and development work. It is isolated from personal and production environments, holds no sensitive data, is never used for personal accounts, and may be reformatted, encrypted, reimaged, infected, destroyed, or otherwise modified for testing and experimentation.
 
 An older Intel quad Core i5 with at least 8 GB of RAM and 20 GB disk is sufficient.
 
@@ -41,9 +41,9 @@ On Windows PowerShell you can use the `Get-FileHash` command:
 ```text
 Get-FileHash .\ubuntu-26.04-desktop-amd64.iso
 
-Algorithm       Hash                                                                   Path
----------       ----                                                                   ----
-SHA256          487F87FAAF547EA30E0ABA4D5B53346292571256B25333A978DB1692BCEE9DD2       ubuntu-26.04-desktop-amd64.iso
+Algorithm     Hash
+---------     ---- 
+SHA256        487F87FAAF547EA30E0ABA4D5B53346292571256B25333A978DB1692BCEE9DD2
 ```
 
 #### Windows Host Copy
@@ -73,7 +73,7 @@ cd provision
 
 Edit the ansible playbook as required.
 
-##### Linux/macOS
+##### Linux + macOS
 
 Generate `playbook.b64`:
 
@@ -154,12 +154,12 @@ The system will reboot automatically after this.
 
 ## First Boot and Setup
 
-Login and open a terminal.
-
-Wait until cloud-init is finished:
+Login and open a terminal then run:
 
 ```shell
-journalctl -f
+sudo su
+cd ~
+./do_setup.sh
 ```
 
-When `/etc/opt/installed.txt` is created setup has finished.
+Reboot then setup is done.
