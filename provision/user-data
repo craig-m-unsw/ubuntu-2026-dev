@@ -48,21 +48,24 @@ autoinstall:
         owner: root:root
         permissions: '0755'
         content: |
-          #!/usr/bin/env sh
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
           echo "hello-boot" | logger
       # Runs once during the lifetime of this machine
       - path: /var/lib/cloud/scripts/per-instance/hello.sh
         owner: root:root
         permissions: '0755'
         content: |
-          #!/usr/bin/env sh
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
           echo "hello-onetime" | logger
       # the Setup script (run manually after the first boot)
       - path: /root/do_setup.sh
         owner: root:root
         permissions: '0755'
         content: |
-          #!/usr/bin/env sh
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
           echo "starting do_setup.sh" | logger
           apt-get update
           apt full-upgrade -y

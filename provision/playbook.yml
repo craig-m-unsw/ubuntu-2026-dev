@@ -1,9 +1,10 @@
 ---
 
-# Ansible playbook to prep Ubuntu desktop
+# Ansible playbook to prep Ubuntu system
+#
 # https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_intro.html
 #
-# Run with: 
+# Edit as required, then run with: 
 #
 #  $ sudo ansible-playbook -i "localhost," -c local playbook.yml -e prime_user=sysadmin
 
@@ -105,15 +106,19 @@
         mode: '0755'
         owner: root
         group: root
-      - dir: /opt/linuxmoe/
+      - dir: /root/scripts/
+        mode: '0750'
+        owner: root
+        group: root
+      - dir: /opt/custom/
         mode: '0755'
         owner: root
         group: root
-      - dir: /opt/linuxmoe/downloads/
+      - dir: /opt/custom/downloads/
         mode: '0755'
         owner: root
         group: root
-      - dir: /opt/linuxmoe/docs/
+      - dir: /opt/custom/docs/
         mode: '0755'
         owner: root
         group: root
@@ -211,11 +216,11 @@
             - name: Download Microsoft repository config package
               ansible.builtin.get_url:
                 url: https://packages.microsoft.com/config/ubuntu/26.04/packages-microsoft-prod.deb
-                dest: /opt/linuxmoe/downloads/packages-microsoft-prod.deb
+                dest: /opt/custom/downloads/packages-microsoft-prod.deb
                 mode: '0644'
             - name: Install Microsoft repository config package
               ansible.builtin.apt:
-                deb: /opt/linuxmoe/downloads/packages-microsoft-prod.deb
+                deb: /opt/custom/downloads/packages-microsoft-prod.deb
             - name: Install Visual Studio Code repository signing key
               ansible.builtin.get_url:
                 url: https://packages.microsoft.com/keys/microsoft.asc
