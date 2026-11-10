@@ -1,6 +1,6 @@
 # Linux Junk Desktop 2026 Edition
 
-Ubuntu 26.04 LTS was released on April 23, 2026, and it will be supported until April 2031.
+Ubuntu 26.04.1 LTS (Resolute Raccoon) is available. Ubuntu 26.04 LTS is supported until April 2031.
 
 It makes a great development platform.
 
@@ -12,7 +12,7 @@ An older Intel quad Core i5 with at least 8 GB of RAM and 20 GB disk is sufficie
 
 **Requirements:**
 
-* x1 Laptop from E-waste 
+* x1 device from E-waste 
 * x1 USB Key for Ubuntu
 * x1 USB key for configuration data
 
@@ -32,18 +32,18 @@ All of the install files required are in `./provision`
 
 On your current PC do the following:
 
-1) Download Ubuntu Desktop or Server 26.04 LTS
+1) Download Ubuntu Desktop or Server 26.04.1 LTS from https://releases.ubuntu.com/resolute/
 2) Check the SHASUM
 3) Create bootable USB media from the ISO
 
 On Windows PowerShell you can use the `Get-FileHash` command:
 
 ```text
-Get-FileHash .\ubuntu-26.04-desktop-amd64.iso
+Get-FileHash .\ubuntu-26.04.1-desktop-amd64.iso
 
 Algorithm     Hash
 ---------     ---- 
-SHA256        487F87FAAF547EA30E0ABA4D5B53346292571256B25333A978DB1692BCEE9DD2
+SHA256        601E30FBF5D97759367C632E2C33630665039B7E2158FD068403DA3CCF1BDA1F
 ```
 
 #### Windows Host Copy
@@ -59,7 +59,7 @@ winget install Rufus.Rufus
 Use `dd` to copy the ISO:
 
 ```shell
-sudo dd if=ubuntu-26.04-desktop-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
+sudo dd if=ubuntu-26.04.1-desktop-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
 sync
 ```
 

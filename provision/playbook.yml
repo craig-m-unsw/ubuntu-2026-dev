@@ -74,6 +74,10 @@
       - python3-pip
       - python3-apt
       - bubblewrap
+      - podman
+      - uidmap
+      - slirp4netns
+      - fuse-overlayfs
       - apparmor 
       - apparmor-utils
       - auditd
@@ -92,15 +96,6 @@
     nodejs_major_version: "22.x"
     nodejs_packages:
       - nodejs
-    docker_packages:
-      - containerd.io
-      - docker-ce
-      - docker-ce-cli
-      - docker-sbx
-      - docker-model-plugin
-      - docker-buildx-plugin
-      - docker-compose-plugin
-
     create_folders:
       - dir: /etc/opt/keyrings
         mode: '0755'
@@ -150,6 +145,11 @@
     - name: Software internal Ubuntu repo
       tags: [software]
       block:
+        - name: Use HTTPS for Ubuntu archive mirrors
+          ansible.builtin.replace:
+            path: /etc/apt/sources.list.d/ubuntu.sources
+            regexp: 'http://'
+            replace: 'https://'
         - name: Update apt cache (if needed)
           ansible.builtin.apt:
             update_cache: true
@@ -322,32 +322,6 @@
               retries: 3
               delay: 5
               until: nodejs_install_result is succeeded
-        - name: Setup Docker repository
-          block:
-            - name: Install Docker repository signing key
-              ansible.builtin.get_url:
-                url: https://download.docker.com/linux/ubuntu/gpg
-                dest: /etc/opt/keyrings/docker.asc
-                checksum: sha256:1500c1f56fa9e26b9b8f42452a553675796ade0807cdce11975eb98170b3a570
-                mode: '0644'
-            - name: Add Docker repository
-              ansible.builtin.apt_repository:
-                repo: "deb [arch=amd64 signed-by=/etc/opt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu resolute stable"
-                filename: docker
-                state: present
-                update_cache: false
-            - name: Update apt cache for Docker repository
-              ansible.builtin.apt:
-                update_cache: true
-            - name: Install Docker packages
-              ansible.builtin.apt:
-                name: "{{ docker_packages }}"
-                state: present
-              register: docker_install_result
-              retries: 3
-              delay: 5
-              until: docker_install_result is succeeded
-
     - name: Configure system
       block:
         - name: Harden /proc mount options in /etc/fstab
@@ -397,15 +371,24 @@
               loop:
                 - root
                 - "{{ prime_user }}"
-        - name: Ensure Docker group exists
-          ansible.builtin.group:
-            name: docker
-            state: present
-        - name: Add devops user to Docker group
-          ansible.builtin.user:
-            name: "{{ prime_user }}"
-            groups: docker
-            append: true
+        - name: Configure rootless Podman subordinate UID range
+          ansible.builtin.lineinfile:
+            path: /etc/subuid
+            regexp: "^{{ prime_user }}:"
+            line: "{{ prime_user }}:100000:65536"
+            create: true
+            owner: root
+            group: root
+            mode: '0644'
+        - name: Configure rootless Podman subordinate GID range
+          ansible.builtin.lineinfile:
+            path: /etc/subgid
+            regexp: "^{{ prime_user }}:"
+            line: "{{ prime_user }}:100000:65536"
+            create: true
+            owner: root
+            group: root
+            mode: '0644'
         - name: Add devops user to KVM and libvirt groups
           ansible.builtin.user:
             name: "{{ prime_user }}"
