@@ -10,7 +10,7 @@ autoinstall:
   identity:
     hostname: linuxdev
     username: sysadmin
-    # the hash of user password is created by this command: mkpasswd --stdin <<< "ubuntu2026"
+    # command to generate the hash of user's password: mkpasswd --stdin <<< "ubuntu2026"
     password: "$y$j9T$s.Ush1PWBYHSRGmZMN5FC.$VYlLJHurnxOdbqosX0WoiHFoh3d9bNu4MchB2whGSb8"
   ssh:
     install-server: true
@@ -19,7 +19,7 @@ autoinstall:
   storage:
     layout:
       name: lvm
-      # the password for full disk encryption
+      # the password is for full disk encryption. Comment out this line to disable full disk encryption.
       password: "secure-at-rest"
   user-data:
     timezone: Australia/Sydney

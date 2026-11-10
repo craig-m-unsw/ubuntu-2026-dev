@@ -40,10 +40,6 @@ On Windows PowerShell you can use the `Get-FileHash` command:
 
 ```text
 Get-FileHash .\ubuntu-26.04.1-desktop-amd64.iso
-
-Algorithm     Hash
----------     ---- 
-SHA256        601E30FBF5D97759367C632E2C33630665039B7E2158FD068403DA3CCF1BDA1F
 ```
 
 #### Windows Host Copy
@@ -65,26 +61,24 @@ sync
 
 ### Create Cloud-Init USB
 
+Automation install USB key.
+
 #### Generate the Base64 Payload
 
-```shell
-cd provision
-```
-
-Edit the ansible playbook as required.
+Edit the ansible `playbook.yml` as required.
 
 ##### Linux + macOS
 
 Generate `playbook.b64`:
 
 ```shell
-base64 -w0 playbook.yml > playbook.b64
+base64 -w0 provision/playbook.yml > playbook.b64
 ```
 
 Replace the placeholder in `user-data`:
 
 ```shell
-sed -i "s|REPLACE_WITH_BASE64_ENCODED_ANSIBLE_PLAYBOOK_CONTENT|$(cat playbook.b64)|" user-data
+sed -i "s|REPLACE_WITH_BASE64_ENCODED_ANSIBLE_PLAYBOOK_CONTENT|$(cat playbook.b64)|" provision/user-data
 ```
 
 ##### Windows PowerShell
@@ -92,13 +86,13 @@ sed -i "s|REPLACE_WITH_BASE64_ENCODED_ANSIBLE_PLAYBOOK_CONTENT|$(cat playbook.b6
 Generate `playbook.b64`:
 
 ```powershell
-[System.Convert]::ToBase64String((Get-Content .\playbook.yml -Encoding Byte)) | Set-Content .\playbook.b64 -NoNewline
+[System.Convert]::ToBase64String((Get-Content .\provision\playbook.yml -Encoding Byte)) | Set-Content .\playbook.b64 -NoNewline
 ```
 
 Replace the placeholder in `user-data`:
 
 ```powershell
-(Get-Content .\user-data -Raw).Replace('REPLACE_WITH_BASE64_ENCODED_ANSIBLE_PLAYBOOK_CONTENT', (Get-Content .\playbook.b64 -Raw)) | Set-Content .\user-data -NoNewline
+(Get-Content .\provision\user-data -Raw).Replace('REPLACE_WITH_BASE64_ENCODED_ANSIBLE_PLAYBOOK_CONTENT', (Get-Content .\playbook.b64 -Raw)) | Set-Content .\provision\user-data -NoNewline
 ```
 
 #### Create the CIDATA USB
@@ -110,6 +104,7 @@ The second USB key should contain the cloud-init configuration:
 2) Copy these files onto it:
    - `meta-data`
    - `user-data`
+   - `playbook_dev.yml` (optional, for the separate developer account setup)
 
 3) Update the disk encryption password in `user-data`
 
@@ -163,3 +158,4 @@ cd ~
 ```
 
 Reboot then setup is done.
+

@@ -1,0 +1,135 @@
+---
+# This is a disciplined operational setup, not a privilege boundary.
+# Good operational security must be maintained.
+# sysadmin's unrestricted sudo can change the egress rule or run as another user.
+- name: Configure developer account and sysadmin egress guardrail
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: true
+
+  vars:
+    sysadmin_user: sysadmin
+    developer_user: developer
+    developer_subordinate_id_start: 165536
+    developer_subordinate_id_count: 65536
+
+  tasks:
+    - name: Ensure Podman and nftables are installed
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          - podman
+          - uidmap
+          - slirp4netns
+          - fuse-overlayfs
+          - nftables
+        state: present
+
+    - name: Create unprivileged developer account
+      ansible.builtin.user:
+        name: "{{ developer_user }}"
+        comment: Developer
+        create_home: true
+        shell: /bin/bash
+        groups: ""
+        append: false
+        state: present
+
+    - name: Configure developer subordinate UID range
+      ansible.builtin.lineinfile:
+        path: /etc/subuid
+        regexp: "^{{ developer_user }}:"
+        line: "{{ developer_user }}:{{ developer_subordinate_id_start }}:{{ developer_subordinate_id_count }}"
+        create: true
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Configure developer subordinate GID range
+      ansible.builtin.lineinfile:
+        path: /etc/subgid
+        regexp: "^{{ developer_user }}:"
+        line: "{{ developer_user }}:{{ developer_subordinate_id_start }}:{{ developer_subordinate_id_count }}"
+        create: true
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Check developer lingering state
+      ansible.builtin.stat:
+        path: "/var/lib/systemd/linger/{{ developer_user }}"
+      register: developer_linger
+
+    - name: Enable lingering for developer
+      ansible.builtin.command:
+        argv:
+          - loginctl
+          - enable-linger
+          - "{{ developer_user }}"
+      when: not developer_linger.stat.exists
+
+    - name: Read sysadmin account details
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ sysadmin_user }}"
+
+    - name: Ensure nftables configuration directory exists
+      ansible.builtin.file:
+        path: /etc/nftables.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Install sysadmin egress rules
+      ansible.builtin.copy:
+        dest: /etc/nftables.d/sysadmin-egress.nft
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          destroy table inet sysadmin_egress
+          table inet sysadmin_egress {
+              chain output {
+                  type filter hook output priority filter; policy accept;
+                  meta skuid {{ ansible_facts.getent_passwd[sysadmin_user][1] }} oifname != "lo" counter reject
+              }
+          }
+      notify: Restart sysadmin egress guardrail
+
+    - name: Install sysadmin egress guardrail service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/sysadmin-egress-guard.service
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Block non-loopback egress for sysadmin
+          After=local-fs.target nftables.service
+          Before=network-pre.target
+          Wants=network-pre.target
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/sbin/nft -f /etc/nftables.d/sysadmin-egress.nft
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart sysadmin egress guardrail
+
+    - name: Enable sysadmin egress guardrail service
+      ansible.builtin.systemd_service:
+        name: sysadmin-egress-guard.service
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  handlers:
+    - name: Restart sysadmin egress guardrail
+      ansible.builtin.systemd_service:
+        name: sysadmin-egress-guard.service
+        state: restarted
+        daemon_reload: true
