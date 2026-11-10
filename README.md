@@ -1,8 +1,6 @@
 # Linux Junk Desktop 2026 Edition
 
-Ubuntu 26.04.1 LTS (Resolute Raccoon) is available. Ubuntu 26.04 LTS is supported until April 2031.
-
-It makes a great development platform.
+Ubuntu 26.04 LTS is supported until April 2031, it makes a great development platform.
 
 > A **junk computer** is hardware sourced from e-waste, recycling, or surplus and used only for engineering, AI agents, learning, and development work. It is isolated from personal and production environments, holds no sensitive data, is never used for personal accounts, and may be reformatted, encrypted, reimaged, infected, destroyed, or otherwise modified for testing and experimentation.
 
@@ -104,9 +102,8 @@ The second USB key should contain the cloud-init configuration:
 2) Copy these files onto it:
    - `meta-data`
    - `user-data`
-   - `playbook_dev.yml` (optional, for the separate developer account setup)
 
-3) Update the disk encryption password in `user-data`
+3) Update the passwords in `user-data`
 
 On Ubuntu, validate the file with:
 
@@ -143,7 +140,7 @@ With both USB keys in the laptop, power on the device. If you did not format the
 
 You should see the cloud-init data on screen. There will be only **one** manual action: select **Install** and press Enter.
 
-![cloud-init-install](/docs/cloud-init-install.png "cloud-init-install")
+![cloud-init-install](/docs/pics/cloud-init-install.png "cloud-init-install")
 
 The system will reboot automatically after this, then you will need to enter FDE password to continue boot.
 

@@ -1,6 +1,6 @@
 #cloud-config
 #
-# this yaml file is cloud-init data for Ubuntu 26.04.1 LTS
+# this yaml file is cloud-init data for Ubuntu LTS (edit as required)
 # https://docs.cloud-init.io/en/latest/index.html
 #
 autoinstall:
@@ -33,6 +33,12 @@ autoinstall:
         content: |
           # allow sysadmin user to sudo (use root) without password
           sysadmin ALL=(ALL) NOPASSWD:ALL
+          #
+          # uncomment the following 2 lines to require password for sudo commands
+          # changes the timestamp_timeout to 0 to require password for every sudo command
+          #
+          #Defaults timestamp_timeout=0
+          #sysadmin ALL=(ALL:ALL) ALL
       - path: /etc/ansible/facts.d/aainstall.fact
         owner: 'root:root'
         permissions: '0755'
@@ -58,6 +64,7 @@ autoinstall:
         content: |
           #!/usr/bin/env bash
           set -Eeuo pipefail
+          echo "CTF{$(openssl rand -hex 32)}" > /root/flag.txt
           echo "hello-onetime" | logger
       # the Setup script (run manually after the first boot)
       - path: /root/do_setup.sh

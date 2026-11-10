@@ -367,15 +367,32 @@
                   key: user.email
                   value: "{{ prime_user }}@localhost"
               changed_when: false
-            - name: Generate SSH keys
+            - name: Ensure root SSH directory exists
+              ansible.builtin.file:
+                path: /root/.ssh
+                state: directory
+                owner: root
+                group: root
+                mode: '0700'
+            - name: Generate root SSH key pair without a passphrase
+              ansible.builtin.command:
+                argv:
+                  - ssh-keygen
+                  - -t
+                  - ed25519
+                  - -N
+                  - ""
+                  - -f
+                  - /root/.ssh/id_ed25519
+                  - -C
+                  - root@localhost
+                creates: /root/.ssh/id_ed25519
+            - name: Generate sysadmin SSH key
               ansible.builtin.user:
-                name: "{{ item }}"
+                name: "{{ prime_user }}"
                 generate_ssh_key: true
                 ssh_key_type: ed25519
                 ssh_key_file: .ssh/id_ed25519
-              loop:
-                - root
-                - "{{ prime_user }}"
         - name: Configure rootless Podman subordinate UID range
           ansible.builtin.lineinfile:
             path: /etc/subuid
@@ -410,14 +427,19 @@
             upgrade: dist
         - name: Refresh snaps
           ansible.builtin.command: snap refresh
-        - name: finished
-          copy:
-            dest: /etc/opt/installed.txt
-            owner: root
-            group: root
-            mode: '0644'
-            content: |
-              Installed successfully using:
-              * Ubuntu Autoinstall
-              * Cloud-Init
-              * Ansible
+        - name: Capture a timestamped baseline of files under /root
+          ansible.builtin.shell:
+            cmd: |
+              set -e
+              if ls /root/root_baseline_*_sha256.txt >/dev/null 2>&1; then
+                echo "root baseline already exists"
+                exit 0
+              fi
+              baseline_ts="$(date -u +%Y%m%dT%H%M%SZ)"
+              baseline_path="/root/root_baseline_${baseline_ts}_sha256.txt"
+              find /root -xdev -type f \
+                ! -name '.bash_history' \
+                ! -name 'root_baseline_*_sha256.txt' \
+                -print0 | sort -z | xargs -0 -r sha256sum -- > "$baseline_path"
+              chmod 0600 "$baseline_path"
+
