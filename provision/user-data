@@ -24,6 +24,8 @@ autoinstall:
   user-data:
     timezone: Australia/Sydney
     locale: en_US.UTF-8
+    # the post-install script is the better place to run apt update/upgrade.
+    # this minimizes installer failures and keeps the bootstrap action predictable
     package_update: false
     package_upgrade: false
     write_files:
@@ -50,30 +52,31 @@ autoinstall:
             "ff_extrepo_enabled" : "true"
           }))
       # Runs on every boot
-      - path: /var/lib/cloud/scripts/per-boot/hello.sh
+      - path: /var/lib/cloud/scripts/per-boot/hello-boot.sh
         owner: root:root
         permissions: '0755'
         content: |
           #!/usr/bin/env bash
           set -Eeuo pipefail
+          echo "CTF{$(openssl rand -hex 32)}" > /tmp/flag.txt
           echo "hello-boot" | logger
       # Runs once during the lifetime of this machine
-      - path: /var/lib/cloud/scripts/per-instance/hello.sh
+      - path: /var/lib/cloud/scripts/per-instance/hello-instance.sh
         owner: root:root
         permissions: '0755'
         content: |
           #!/usr/bin/env bash
           set -Eeuo pipefail
           echo "CTF{$(openssl rand -hex 32)}" > /root/flag.txt
-          echo "hello-onetime" | logger
+          echo "hello-instance" | logger
       # the Setup script (run manually after the first boot)
-      - path: /root/do_setup.sh
+      - path: /root/setup.sh
         owner: root:root
         permissions: '0755'
         content: |
           #!/usr/bin/env bash
           set -Eeuo pipefail
-          echo "starting do_setup.sh" | logger
+          echo "starting setup.sh" | logger
           apt-get update
           apt full-upgrade -y
           snap fresh
@@ -82,7 +85,7 @@ autoinstall:
           log_file="$log_dir/ansible.log"
           echo "Ansible log: $log_file"
           ansible-playbook -i "localhost," -c local /root/playbook.yml -e prime_user=sysadmin -vv 2>&1 | tee "$log_file"
-          echo "finished do_setup.sh" | logger
+          echo "finished setup.sh" | logger
       - path: /root/playbook.yml
         owner: root:root
         permissions: '0644'

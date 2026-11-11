@@ -37,7 +37,6 @@
       - gpg
       - uuid
       - tcpdump
-      - wireshark
       - socat
       - iotop
       - htop
@@ -97,6 +96,7 @@
     nodejs_major_version: "22.x"
     nodejs_packages:
       - nodejs
+
     create_folders:
       - dir: /etc/opt/keyrings
         mode: '0755'
@@ -327,6 +327,8 @@
               retries: 3
               delay: 5
               until: nodejs_install_result is succeeded
+
+    # config
     - name: Configure system
       block:
         - name: Harden /proc mount options in /etc/fstab
@@ -442,4 +444,6 @@
                 ! -name 'root_baseline_*_sha256.txt' \
                 -print0 | sort -z | xargs -0 -r sha256sum -- > "$baseline_path"
               chmod 0600 "$baseline_path"
+              chattr +i "$baseline_path"
+              echo "root baseline generated"
 

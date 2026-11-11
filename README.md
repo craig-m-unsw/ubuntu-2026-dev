@@ -1,18 +1,22 @@
-# Linux Junk Desktop 2026 Edition
+# Linux experiment PC 2026 Edition
 
 Ubuntu 26.04 LTS is supported until April 2031, it makes a great development platform.
 
+This project will help you install Ubuntu on a spare computer with automation. We should be able to rebuild our development system anytime.
+
 > A **junk computer** is hardware sourced from e-waste, recycling, or surplus and used only for engineering, AI agents, learning, and development work. It is isolated from personal and production environments, holds no sensitive data, is never used for personal accounts, and may be reformatted, encrypted, reimaged, infected, destroyed, or otherwise modified for testing and experimentation.
 
-An older Intel quad Core i5 with at least 8 GB of RAM and 20 GB disk is sufficient.
+![header_diagram.png](/docs/pics/header_diagram.png "header_diagram.png")
 
 ## Overview
 
 **Requirements:**
 
 * x1 device from E-waste 
-* x1 USB Key for Ubuntu
+* x1 USB Key for Ubuntu ISO (unmodified)
 * x1 USB key for configuration data
+
+An older Intel quad Core i5 with 4-8 GB of RAM and 20 GB disk is sufficient.
 
 ### security notes
 
@@ -30,7 +34,7 @@ All of the install files required are in `./provision`
 
 On your current PC do the following:
 
-1) Download Ubuntu Desktop or Server 26.04.1 LTS from https://releases.ubuntu.com/resolute/
+1) Download Ubuntu Desktop or Server LTS ISO from https://releases.ubuntu.com/resolute/
 2) Check the SHASUM
 3) Create bootable USB media from the ISO
 
@@ -59,7 +63,7 @@ sync
 
 ### Create Cloud-Init USB
 
-Automation install USB key.
+Automation install USB key. Edit files as required.
 
 #### Generate the Base64 Payload
 
@@ -146,13 +150,12 @@ The system will reboot automatically after this, then you will need to enter FDE
 
 ## First Boot and Setup
 
-Login and open a terminal then run:
+Login and open a terminal then run script, to call ansible, for post-install tasks (updates, get packages, do config):
 
 ```shell
-sudo su
-cd ~
-./do_setup.sh
+sudo /root/setup.sh
+sudo reboot
 ```
 
-Reboot then setup is done.
+setup is done.
 
